@@ -239,7 +239,14 @@ export default function Auth({ lang, setLang, isDark, setIsDark }: AuthProps) {
 
           {/* Google Sign In Button */}
           <button 
-            onClick={signInWithGoogle}
+            onClick={async () => {
+              try {
+                setError(null);
+                await signInWithGoogle();
+              } catch (err: any) {
+                setError(err.message || 'Google sign in failed');
+              }
+            }}
             className="w-full flex items-center justify-center gap-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-3.5 rounded-2xl font-bold hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm active:scale-[0.98]"
           >
             <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" className="w-5 h-5" />
