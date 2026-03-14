@@ -25,6 +25,9 @@ export const signUpWithEmail = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signUp({
     email, // User's email address
     password, // User's chosen password
+    options: {
+      emailRedirectTo: window.location.origin, // Redirects back to the app after email confirmation
+    },
   });
   if (error) throw error; // Throws an error if sign-up fails
   return data; // Returns the created user data
