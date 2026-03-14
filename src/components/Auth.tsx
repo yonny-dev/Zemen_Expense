@@ -56,7 +56,7 @@ export default function Auth({ lang, setLang, isDark, setIsDark }: AuthProps) {
         await signInWithEmail(email, password); // Sign in with email/password
       } else if (mode === 'signup') {
         await signUpWithEmail(email, password); // Sign up with email/password
-        setMessage(lang === 'en' ? 'Check your email for the confirmation link!' : 'እባክዎ የኢሜል ማረጋገጫ ሊንኩን ያረጋግጡ!');
+        setMessage(lang === 'en' ? 'Check your email for the confirmation link! If you don\'t see it, check your spam folder.' : 'እባክዎ የኢሜል ማረጋገጫ ሊንኩን ያረጋግጡ! ካላገኙት አይፈለጌ መልዕክት (spam) ውስጥ ይፈልጉ።');
       } else if (mode === 'reset') {
         await resetPassword(email); // Send password reset email
         setMessage(lang === 'en' ? 'Password reset link sent to your email!' : 'የይለፍ ቃል መቀየሪያ ሊንክ ወደ ኢሜልዎ ተልኳል!');
