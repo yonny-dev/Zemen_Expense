@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'; // Import React and core hooks
 import { motion, AnimatePresence } from 'motion/react'; // Import animation components
-import { Plus, LayoutDashboard, ListOrdered, Languages, Moon, Sun, TrendingUp, TrendingDown, Wallet, Trash2, Edit2, X, LogOut, Settings, User as UserIcon, ChevronDown, Download } from 'lucide-react'; // Import UI icons
+import { Plus, LayoutDashboard, ListOrdered, Languages, Moon, Sun, TrendingUp, TrendingDown, Wallet, Trash2, Edit2, X, LogOut, Settings, User as UserIcon, ChevronDown, Download, AlertCircle, RefreshCw } from 'lucide-react'; // Import UI icons
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'; // Import chart components
 import { format, parseISO } from 'date-fns'; // Import date formatting utilities
 import { clsx, type ClassValue } from 'clsx'; // Import utility for conditional class names
@@ -48,6 +48,8 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   // State to store the transaction currently being edited
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  // State to store the transaction ID to be deleted
+  const [transactionToDelete, setTransactionToDelete] = useState<string | number | null>(null);
   // State to control the user profile menu dropdown
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -136,22 +138,36 @@ export default function App() {
 
   // Function to handle saving (adding or updating) a transaction
   const handleSaveTransaction = async (tx: Transaction) => {
-    if (editingTransaction?.id) {
-      // Update existing
-      await api.updateTransaction(editingTransaction.id as string, tx);
-    } else {
-      // Add new
-      await api.addTransaction(tx);
+    try {
+      if (editingTransaction?.id) {
+        // Update existing
+        await api.updateTransaction(editingTransaction.id as string, tx);
+      } else {
+        // Add new
+        await api.addTransaction(tx);
+      }
+      setIsModalOpen(false); // Close modal
+      setEditingTransaction(null); // Clear edit state
+      // Force reload as requested by user
+      window.location.reload();
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+      alert(lang === 'en' ? 'Failed to save transaction' : 'ግብይቱን ማስቀመጥ አልተቻለም');
     }
-    setIsModalOpen(false); // Close modal
-    setEditingTransaction(null); // Clear edit state
   };
 
-  // Function to handle deleting a transaction with confirmation
-  const handleDeleteTransaction = async (id: string | number) => {
-    // Show a confirmation dialog in the appropriate language
-    if (window.confirm(lang === 'en' ? 'Are you sure you want to delete this transaction?' : 'ይህንን ግብይት በእርግጠኝነት ማጥፋት ይፈልጋሉ?')) {
-      await api.deleteTransaction(id as string); // Call API to delete
+  // Function to handle deleting a transaction
+  const handleDeleteTransaction = async () => {
+    if (!transactionToDelete) return;
+    
+    try {
+      await api.deleteTransaction(transactionToDelete as string); // Call API to delete
+      setTransactionToDelete(null);
+      // Force reload as requested by user
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      alert(lang === 'en' ? 'Failed to delete transaction' : 'ግብይቱን ማጥፋት አልተቻለም');
     }
   };
 
@@ -287,6 +303,15 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Refresh Button */}
+            <button 
+              onClick={() => window.location.reload()}
+              className="p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm text-zinc-500"
+              title={lang === 'en' ? 'Refresh' : 'አድስ'}
+            >
+              <RefreshCw size={20} />
+            </button>
+
             {/* Add Transaction Button */}
             <button 
               onClick={() => {
@@ -444,7 +469,7 @@ export default function App() {
               <TransactionList 
                 transactions={transactions.slice(0, 5)} 
                 onEdit={(tx) => { setEditingTransaction(tx); setIsModalOpen(true); }}
-                onDelete={handleDeleteTransaction}
+                onDelete={(id) => setTransactionToDelete(id)}
                 t={t}
               />
             </div>
@@ -467,12 +492,28 @@ export default function App() {
             <TransactionList 
               transactions={transactions} 
               onEdit={(tx) => { setEditingTransaction(tx); setIsModalOpen(true); }}
-              onDelete={handleDeleteTransaction}
+              onDelete={(id) => setTransactionToDelete(id)}
               t={t}
             />
           </div>
         )}
       </main>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {transactionToDelete && (
+          <ConfirmModal
+            isOpen={!!transactionToDelete}
+            onClose={() => setTransactionToDelete(null)}
+            onConfirm={handleDeleteTransaction}
+            title={lang === 'en' ? 'Delete Transaction' : 'ግብይቱን አጥፋ'}
+            message={lang === 'en' ? 'Are you sure you want to delete this transaction? This action cannot be undone.' : 'ይህንን ግብይት በእርግጠኝነት ማጥፋት ይፈልጋሉ? ይህ ድርጊት ሊመለስ አይችልም።'}
+            confirmText={lang === 'en' ? 'Delete' : 'አጥፋ'}
+            cancelText={lang === 'en' ? 'Cancel' : 'ተመለስ'}
+            t={t}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Transaction Modal for Adding/Editing */}
       <AnimatePresence>
@@ -561,14 +602,62 @@ function TransactionList({ transactions, onEdit, onDelete, t }: { transactions: 
             )}>
               {tx.type === 'income' ? '+' : '-'} {t.currency} {tx.amount.toLocaleString()}
             </p>
-            {/* Action Buttons (Edit/Delete) - Visible on Hover */}
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => onEdit(tx)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-zinc-500" title={t.edit}><Edit2 size={16} /></button>
-              <button onClick={() => tx.id && onDelete(tx.id)} className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-red-500" title={t.delete}><Trash2 size={16} /></button>
+            {/* Action Buttons (Edit/Delete) - Visible on Hover (Desktop) and Always (Mobile) */}
+            <div className="flex gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+              <button 
+                onClick={(e) => { e.stopPropagation(); onEdit(tx); }} 
+                className="p-3 lg:p-2 bg-zinc-100 dark:bg-zinc-800 lg:bg-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl lg:rounded-lg text-zinc-500 transition-colors" 
+                title={t.edit}
+              >
+                <Edit2 size={18} className="lg:w-4 lg:h-4" />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); tx.id && onDelete(tx.id); }} 
+                className="p-3 lg:p-2 bg-red-50 dark:bg-red-900/20 lg:bg-transparent hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl lg:rounded-lg text-red-500 transition-colors" 
+                title={t.delete}
+              >
+                <Trash2 size={18} className="lg:w-4 lg:h-4" />
+              </button>
             </div>
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Confirmation Modal Component
+function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText, cancelText, t }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string, confirmText: string, cancelText: string, t: any }) {
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl p-6 text-center"
+      >
+        <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h3 className="text-xl font-bold mb-2">{title}</h3>
+        <p className="text-zinc-500 dark:text-zinc-400 mb-6">{message}</p>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">{cancelText}</button>
+          <button 
+            onClick={() => { onConfirm(); onClose(); }}
+            className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
