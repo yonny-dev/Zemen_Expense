@@ -224,7 +224,7 @@ export default function App() {
   }
 
   // Colors for the pie chart
-  const COLORS = ['#10b981', '#f43f5e', '#226888', '#1a526d', '#2b82aa', '#349ccb', '#133d52'];
+  const COLORS = ['#6366f1', '#8b5cf6', '#3b82f6', '#0ea5e9', '#06b6d4', '#f59e0b', '#f97316'];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
